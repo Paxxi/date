@@ -25,7 +25,7 @@ include( GNUInstallDirs )
 get_directory_property( has_parent PARENT_DIRECTORY )
 
 # Override by setting on CMake command line.
-set( CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ standard whose features are requested." )
+set( CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ standard whose features are requested." )
 
 option( USE_SYSTEM_TZ_DB "Use the operating system's timezone database" OFF )
 option( MANUAL_TZ_DB "User will set TZ DB manually by invoking set_install in their code" OFF )
@@ -146,7 +146,12 @@ if( BUILD_TZ_LIB )
         POSITION_INDEPENDENT_CODE ON
         PUBLIC_HEADER "${TZ_HEADERS}"
         VERSION "${PROJECT_VERSION}"
-        SOVERSION "${ABI_VERSION}" )
+        SOVERSION "${ABI_VERSION}"
+        DEBUG_POSTFIX d
+        COMPILE_PDB_NAME date-tz
+        COMPILE_PDB_NAME_DEBUG date-tzd
+        COMPILE_PDB_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+        )
     if( NOT MSVC )
         find_package( Threads )
         target_link_libraries( date-tz PUBLIC Threads::Threads )
@@ -172,11 +177,9 @@ install( TARGETS date
     EXPORT dateConfig
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/date )
 export( TARGETS date NAMESPACE date:: FILE dateTargets.cmake )
-if (CMAKE_VERSION VERSION_LESS 3.15)
     install(
-        FILES include/date/date.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/date )
-endif ()
+        DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/date
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 if( BUILD_TZ_LIB )
     install( TARGETS date-tz
@@ -185,14 +188,21 @@ if( BUILD_TZ_LIB )
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )  # This is for Windows
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/RelWithDebInfo/date-tz.pdb
+        DESTINATION lib
+        CONFIGURATIONS RelWithDebInfo
+    )
+      
+      install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/Debug/date-tzd.pdb
+        DESTINATION lib
+        CONFIGURATIONS Debug
+    )
     export( TARGETS date-tz NAMESPACE date:: APPEND FILE dateTargets.cmake )
 endif( )
 
-if( WIN32 AND NOT CYGWIN)
-    set( CONFIG_LOC CMake )
-else( )
-    set( CONFIG_LOC "${CMAKE_INSTALL_LIBDIR}/cmake/date" )
-endif( )
+set( CONFIG_LOC "${CMAKE_INSTALL_LIBDIR}/cmake/date" )
 install( EXPORT dateConfig
   FILE dateTargets.cmake
   NAMESPACE date::
